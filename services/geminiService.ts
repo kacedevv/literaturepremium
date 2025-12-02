@@ -1,19 +1,21 @@
 import { GoogleGenAI, Chat } from "@google/genai";
 import { EssayParams } from "../types";
 
-// Lấy API key từ biến môi trường Vite
-// Cần khai báo trong .env.local và trên Vercel: VITE_GEMINI_API_KEY=xxxxx
+// Lấy API key từ biến môi trường Vite.
+// - Trên Vercel: đặt VITE_GEMINI_API_KEY trong Environment Variables.
+// - Khi chạy local: có thể tạo file .env.local với dòng:
+//   VITE_GEMINI_API_KEY=YOUR_API_KEY
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 
 if (!apiKey) {
-  // Log lỗi rõ ràng để bạn biết là chưa cấu hình KEY
+  // Không throw ở đây để tránh vỡ build, chỉ log cảnh báo.
   console.error(
-    "❌ Thiếu biến môi trường VITE_GEMINI_API_KEY. Hãy thêm API key vào .env.local (local) và Environment Variables trên Vercel."
+    "⚠️ Chưa cấu hình VITE_GEMINI_API_KEY. Hãy thêm API key vào Environment Variables (Vercel) hoặc .env.local (local)."
   );
 }
 
 const ai = new GoogleGenAI({
-  // Nếu apiKey undefined thì Gemini sẽ lỗi – đây là lỗi cấu hình, không phải lỗi code
+  // Nếu apiKey undefined thì các hàm phía dưới sẽ tự throw lỗi dễ hiểu.
   apiKey: apiKey || "",
 });
 
@@ -51,7 +53,7 @@ export const generateEssayContent = async (
   try {
     if (!apiKey) {
       throw new Error(
-        "Thiếu Gemini API key. Hãy cấu hình biến môi trường VITE_GEMINI_API_KEY."
+        "Thiếu Gemini API key. Hãy cấu hình biến môi trường VITE_GEMINI_API_KEY trên Vercel (hoặc .env.local khi chạy local)."
       );
     }
 
@@ -90,7 +92,7 @@ export const generateEssayContent = async (
 export const createChatSession = (): Chat => {
   if (!apiKey) {
     throw new Error(
-      "Thiếu Gemini API key. Hãy cấu hình biến môi trường VITE_GEMINI_API_KEY."
+      "Thiếu Gemini API key. Hãy cấu hình biến môi trường VITE_GEMINI_API_KEY trên Vercel (hoặc .env.local khi chạy local)."
     );
   }
 
