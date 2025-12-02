@@ -1,10 +1,27 @@
 import { GoogleGenAI, Chat } from "@google/genai";
 import { EssayParams } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Lấy API key từ biến môi trường Vite
+// Cần khai báo trong .env.local và trên Vercel: VITE_GEMINI_API_KEY=xxxxx
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 
-// Essay Generation
-export const generateEssayContent = async (params: EssayParams): Promise<string> => {
+if (!apiKey) {
+  // Log lỗi rõ ràng để bạn biết là chưa cấu hình KEY
+  console.error(
+    "❌ Thiếu biến môi trường VITE_GEMINI_API_KEY. Hãy thêm API key vào .env.local (local) và Environment Variables trên Vercel."
+  );
+}
+
+const ai = new GoogleGenAI({
+  // Nếu apiKey undefined thì Gemini sẽ lỗi – đây là lỗi cấu hình, không phải lỗi code
+  apiKey: apiKey || "",
+});
+
+// ==================== ESSAY GENERATION ====================
+
+export const generateEssayContent = async (
+  params: EssayParams
+): Promise<string> => {
   const { topic, outline, length, language } = params;
 
   const systemInstruction = `
@@ -32,36 +49,56 @@ export const generateEssayContent = async (params: EssayParams): Promise<string>
   `;
 
   try {
+    if (!apiKey) {
+      throw new Error(
+        "Thiếu Gemini API key. Hãy cấu hình biến môi trường VITE_GEMINI_API_KEY."
+      );
+    }
+
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: "gemini-2.5-flash",
       contents: userPrompt,
       config: {
-        systemInstruction: systemInstruction,
+        systemInstruction,
         temperature: 0.7,
       },
     });
 
     if (response.text) {
-      // Clean up potential artifacts
+      // Dọn dẹp text trả về
       let cleanText = response.text.trim();
-      // Remove generic markdown code block wrappers if present
-      cleanText = cleanText.replace(/^```(markdown|html|text)?\n/, '').replace(/\n```$/, '');
+
+      // Nếu có bọc trong ```markdown ``` thì bỏ đi
+      cleanText = cleanText
+        .replace(/^```(markdown|html|text)?\n/, "")
+        .replace(/\n```$/, "");
+
       return cleanText;
     } else {
       throw new Error("Không nhận được phản hồi từ AI.");
     }
   } catch (error) {
     console.error("Gemini API Error:", error);
-    throw new Error("Đã có lỗi xảy ra khi tạo bài văn. Vui lòng thử lại.");
+    throw new Error(
+      "Đã có lỗi xảy ra khi tạo bài văn. Vui lòng kiểm tra lại cấu hình hoặc thử lại sau."
+    );
   }
 };
 
-// Chat Functionality
-export const createChatSession = () => {
+// ==================== CHAT FUNCTIONALITY ====================
+
+export const createChatSession = (): Chat => {
+  if (!apiKey) {
+    throw new Error(
+      "Thiếu Gemini API key. Hãy cấu hình biến môi trường VITE_GEMINI_API_KEY."
+    );
+  }
+
   return ai.chats.create({
-    model: 'gemini-2.5-flash',
+    model: "gemini-2.5-flash",
     config: {
-      systemInstruction: 'Bạn là trợ lý AI thông minh, thân thiện của ứng dụng EssayGen Pro. Bạn giúp người dùng giải đáp thắc mắc về văn học, sửa lỗi chính tả, hoặc gợi ý ý tưởng viết bài. Hãy trả lời ngắn gọn, súc tích và hữu ích.',
+      systemInstruction:
+        "Bạn là trợ lý AI thông minh, thân thiện của ứng dụng EssayGen Pro. Bạn giúp người dùng giải đáp thắc mắc về văn học, sửa lỗi chính tả, hoặc gợi ý ý tưởng viết bài. Hãy trả lời ngắn gọn, súc tích và hữu ích.",
     },
   });
 };
